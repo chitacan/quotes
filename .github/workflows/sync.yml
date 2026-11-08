@@ -62,7 +62,34 @@ jobs:
     - name: Pull local clone
       env:
         QUOTES_DIR: ${{ vars.QUOTES_DIR }}
+      # fast-forward가 안 되면(로컬 변경과 충돌, 로컬 커밋, 다른 브랜치) 원격 내용으로 덮어쓴다.
+      # 덮어쓰기 전에 로컬 상태를 .context/sync-conflicts/<시각>/ 으로 옮긴다.
+      #   files/          커밋 안 된 변경 파일(복사)과 untracked 파일(이동)
+      #   commits.bundle  원격에 없는 로컬 커밋 (git fetch <bundle> main:<브랜치>로 복구)
+      # .context에는 러너(actions-runner)가 있으므로 절대 건드리지 않는다.
       run: |-
         dir="${QUOTES_DIR:-$HOME/git/quotes}"
-        git -C "$dir" pull --ff-only origin "${GITHUB_REF_NAME}"
-        git -C "$dir" log -1 --oneline
+        branch="${GITHUB_REF_NAME}"
+        cd "$dir"
+        git fetch origin "$branch"
+        if [ "$(git branch --show-current)" = "$branch" ] && git merge --ff-only "origin/$branch"; then
+          :
+        else
+          save=".context/sync-conflicts/$(date +%Y%m%d-%H%M%S)"
+          mkdir -p "$save"
+          git diff -z --name-only --diff-filter=d HEAD -- ':!.context' |
+            while IFS= read -r -d '' f; do mkdir -p "$save/files/$(dirname "$f")"; cp -p "$f" "$save/files/$f"; done
+          git ls-files -z --others --exclude-standard -- ':!.context' |
+            while IFS= read -r -d '' f; do mkdir -p "$save/files/$(dirname "$f")"; mv "$f" "$save/files/$f"; done
+          if git rev-parse -q --verify "refs/heads/$branch" >/dev/null &&
+             ! git merge-base --is-ancestor "refs/heads/$branch" "origin/$branch"; then
+            git bundle create "$save/commits.bundle" "refs/heads/$branch" "^origin/$branch"
+          fi
+          git checkout -f -B "$branch" "origin/$branch"
+          if rmdir "$save" 2>/dev/null; then
+            echo "::warning::fast-forward 실패, origin/$branch 내용으로 덮어썼습니다 (옮길 로컬 변경 없음)"
+          else
+            echo "::warning::fast-forward 실패, origin/$branch 내용으로 덮어썼습니다. 로컬 변경은 $dir/$save 에 있습니다"
+          fi
+        fi
+        git log -1 --oneline
