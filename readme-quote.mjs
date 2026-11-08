@@ -108,7 +108,7 @@ function updateReadme(block) {
   const next =
     start !== -1 && end !== -1
       ? readme.slice(0, start) + block + readme.slice(end + END.length)
-      : `${readme.trimEnd()}\n\n${block}\n`;
+      : `${readme.trim() ? `${readme.trimEnd()}\n\n` : ""}${block}\n`;
   writeFileSync(README_PATH, next);
 }
 
