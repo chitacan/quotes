@@ -1,0 +1,68 @@
+name: sync quotes
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 매주 일요일 09:00 KST (cron은 UTC 기준)
+    - cron: '0 0 * * 0'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: [self-hosted, cmms]
+    # 푸시하는 job만 그룹을 잡는다. cmba-15가 꺼져 pull이 대기해도 README 워크플로를 막지 않는다.
+    concurrency:
+      group: push-main
+      cancel-in-progress: false
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-node@v5
+      with:
+        node-version: 24
+    - name: Run script
+      id: sync
+      env:
+        ROAM_TOKEN: ${{ secrets.ROAM_TOKEN }}
+        ROAM_GRAPH: ${{ secrets.ROAM_GRAPH }}
+        # SQLite는 쓰기마다 파일 헤더가 바뀌므로 파일이 아니라 quotes 테이블 내용을 비교한다.
+        DIGEST: |-
+          const { DatabaseSync } = require("node:sqlite");
+          const rows = new DatabaseSync("quotes.db", { readOnly: true }).prepare("SELECT * FROM quotes ORDER BY uid").all();
+          console.log(require("node:crypto").createHash("sha256").update(JSON.stringify(rows)).digest("hex"));
+      run: |-
+        before=$(node -e "$DIGEST")
+        node sync-quotes.mjs
+        after=$(node -e "$DIGEST")
+        if [ "$before" = "$after" ]; then
+          echo "quotes unchanged"
+          git checkout -- quotes.db
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Commit and push
+      if: steps.sync.outputs.changed == 'true'
+      run: |-
+        git config user.name "Automated"
+        git config user.email "actions@users.noreply.github.com"
+        git add quotes.db
+        git commit -m "Sync quotes: $(date -u)"
+        git pull --rebase origin "${GITHUB_REF_NAME}"
+        git push origin "HEAD:${GITHUB_REF_NAME}"
+
+  # Raycast quote 확장기능이 읽는 cmba-15의 로컬 클론에 새 quotes.db를 받는다.
+  # 지난번에 놓친 pull도 따라잡도록 변경 여부와 관계없이 매번 실행한다.
+  # cmba-15가 꺼져 있으면 최대 24시간 대기하다 실패한다.
+  pull:
+    needs: sync
+    runs-on: [self-hosted, cmba-15]
+    steps:
+    - name: Pull local clone
+      env:
+        QUOTES_DIR: ${{ vars.QUOTES_DIR }}
+      run: |-
+        dir="${QUOTES_DIR:-$HOME/git/quotes}"
+        git -C "$dir" pull --ff-only origin "${GITHUB_REF_NAME}"
+        git -C "$dir" log -1 --oneline

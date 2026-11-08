@@ -1,0 +1,47 @@
+name: today's quote
+
+on:
+  workflow_dispatch:
+    inputs:
+      uid:
+        description: 'README에 넣을 인용구의 Roam block uid (비워두면 오늘의 문구)'
+        required: false
+        type: string
+  schedule:
+    # 매일 00:05 KST (cron은 UTC 기준). Raycast quote 확장기능과 같은 날짜로 고른다.
+    - cron: '5 15 * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  readme:
+    runs-on: [self-hosted, cmms]
+    concurrency:
+      group: push-main
+      cancel-in-progress: false
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-node@v5
+      with:
+        node-version: 24
+    - name: Update README
+      env:
+        TZ: Asia/Seoul
+        ROAM_TOKEN: ${{ secrets.ROAM_TOKEN }}
+        ROAM_GRAPH: ${{ secrets.ROAM_GRAPH }}
+        QUOTE_UID: ${{ inputs.uid }}
+        TRIGGERED_BY: ${{ github.event_name == 'workflow_dispatch' && github.triggering_actor || '' }}
+      run: node readme-quote.mjs "$QUOTE_UID"
+    - name: Commit and push if it changed
+      run: |-
+        git config user.name "Automated"
+        git config user.email "actions@users.noreply.github.com"
+        git add README.md
+        if git diff --cached --quiet; then
+          echo "README.md unchanged"
+          exit 0
+        fi
+        git commit -m "Today's quote: $(TZ=Asia/Seoul date +%F)"
+        git pull --rebase origin "${GITHUB_REF_NAME}"
+        git push origin "HEAD:${GITHUB_REF_NAME}"
