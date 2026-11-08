@@ -1,7 +1,3 @@
-# Quotes
-
-Inspirational quotes to keep me motivated and uplifted.
-
 <!-- quote:start -->
 > 현실에선 한 장면에 모일 수 없는 존재들을 화폭안에 모아 화면 안에서 만큼은 한 동네 이웃처럼 다정하게 어울리길 바랬대요.
 
