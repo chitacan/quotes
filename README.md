@@ -1,5 +1,6 @@
 <!-- quote:start -->
-> Why can't I connect my editor to a running program and hover over values to see what they last were?
+> 인간의 뇌 구조상 누가 자신을 설득하려 할 때, 말을 하려는 사람이 누군지 보고 그 내용을 듣기도 전에 먼저 어느 정도 결론을 낸다고 한다.
+> 그러니까 누군가를 설득시키려면 그 사람의 마음을 얻는 방법을 먼저 알아야 하는 것이다.
 
-<sub>🤖 매일 자동으로 선택된 오늘의 문구 · 2026-11-10 · [Roam](https://roamresearch.com/#/app/chitacan/page/VVWgxvjQd)</sub>
+<sub>🤖 매일 자동으로 선택된 오늘의 문구 · 2026-11-11 · [Roam](https://roamresearch.com/#/app/chitacan/page/zpOp97NF7)</sub>
 <!-- quote:end -->
