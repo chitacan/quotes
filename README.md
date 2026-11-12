@@ -1,5 +1,5 @@
 <!-- quote:start -->
-> 이 사건을 계기로 나는 소프트웨어 프로젝트가 단거리 경주가 아니라 마라톤이라는 것을 배웠다. 좋은 성적을 내려면 자신에게 맞는 속도를 찾아야 한다. 무리에서 뛰쳐나와 전력 질주를 한다면, 결승선을 통과하기 전에 에너지가 바닥나 버릴 것이다. - p117
+> 나의 모든 패를 드러내고, 항상 투명하게 소통하려고 노력하기.
 
-<sub>🤖 매일 자동으로 선택된 오늘의 문구 · 2026-11-12 · [Roam](https://roamresearch.com/#/app/chitacan/page/tvitF99rj)</sub>
+<sub>🤖 매일 자동으로 선택된 오늘의 문구 · 2026-11-13 · [Roam](https://roamresearch.com/#/app/chitacan/page/Yh3-hzu2B)</sub>
 <!-- quote:end -->
