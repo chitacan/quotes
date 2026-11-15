@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // README.md의 인용구 영역을 오늘의 문구(또는 지정한 uid의 인용구)로 바꾼다.
+// Roam [[Daily Routine]] 템플릿의 인용구 블록도 같은 인용구로 바꾼다.
 //
 //   node readme-quote.mjs              오늘의 문구 (Raycast quote 확장기능과 같은 선택)
 //   node readme-quote.mjs <block uid>  quotes.db에서 그 uid의 인용구
 //
-// 환경 변수: ROAM_TOKEN (오늘의 문구일 때 필수), ROAM_GRAPH (기본 chitacan),
+// 환경 변수: ROAM_TOKEN (필수), ROAM_GRAPH (기본 chitacan),
 //           TZ (날짜 기준, 워크플로에서는 Asia/Seoul),
 //           TRIGGERED_BY (workflow_dispatch를 실행한 사람, 없으면 자동 실행으로 표시)
 
@@ -23,6 +24,9 @@ const GRAPH = process.env.ROAM_GRAPH || "chitacan";
 const MAX_ATTEMPTS = 5;
 const START = "<!-- quote:start -->";
 const END = "<!-- quote:end -->";
+// [[Daily Routine]] 템플릿에서 "((uid))"가 매일 노트로 복사되는 블록
+const POINTER_UID = "CoT4MtvGS";
+const TODAY_QUOTE_HEADER = "**Today's Quote**";
 
 // ---- 아래 선택 로직은 raycast/extensions/quote의 src/db.ts, src/today.ts와 같아야 한다 ----
 
@@ -49,20 +53,39 @@ function getQuoteOfDay(db, day, attempt = 0) {
   return db.prepare("SELECT uid, raw_text FROM quotes ORDER BY uid LIMIT 1 OFFSET ?").get(offset);
 }
 
-// utils.ts getBlockString(): 블록 문자열, 그 uid의 블록이 없으면 null
-async function getBlockString(uid) {
-  const res = await fetch(`https://api.roamresearch.com/api/graph/${GRAPH}/pull`, {
+async function roamFetch(path, body) {
+  const res = await fetch(`https://api.roamresearch.com/api/graph/${GRAPH}/${path}`, {
     method: "POST",
     headers: {
       "X-Authorization": `Bearer ${process.env.ROAM_TOKEN}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ eid: `[:block/uid "${uid}"]`, selector: "[:block/string]" }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`Roam API ${res.status}: ${await res.text()}`);
-  const { result } = await res.json();
-  return result?.[":block/string"] ?? null;
+  return res;
+}
+
+// utils.ts fetchBlock()
+async function fetchBlock(uid, selector = "[:block/string]") {
+  const { result } = await (await roamFetch("pull", { eid: `[:block/uid "${uid}"]`, selector })).json();
+  return result;
+}
+
+// utils.ts getBlockString(): 블록 문자열, 그 uid의 블록이 없으면 null
+async function getBlockString(uid) {
+  return (await fetchBlock(uid))?.[":block/string"] ?? null;
+}
+
+// utils.ts updateBlock()
+async function updateBlock(uid, string) {
+  await roamFetch("write", { action: "update-block", block: { uid, string } });
+}
+
+// utils.ts parseBlockRef(): "((uid))" → "uid"
+function parseBlockRef(string) {
+  return string?.trim().match(/^\(\(([\w-]+)\)\)$/)?.[1];
 }
 
 // today.ts pickQuote(): Roam에서 지워진 인용구는 건너뛴다.
@@ -75,6 +98,29 @@ async function pickQuote(db, day) {
 }
 
 // ---- 선택 로직 끝 ----
+
+// today.ts fixTodayNote(): 템플릿 포인터가 바뀌기 전에 오늘 노트를 만들었다면
+// **Today's Quote** 아래 첫 인용구가 이전 포인터 값이다. 그 하나만 바꾼다.
+async function fixTodayNote(day, staleUid, uid) {
+  const note = await fetchBlock(
+    day,
+    "[{:block/children [:block/string {:block/children [:block/uid :block/string :block/order]}]}]",
+  );
+  const header = (note?.[":block/children"] ?? []).find((b) => b[":block/string"] === TODAY_QUOTE_HEADER);
+  const [first] = [...(header?.[":block/children"] ?? [])].sort((a, b) => a[":block/order"] - b[":block/order"]);
+  if (first && parseBlockRef(first[":block/string"]) === staleUid) {
+    await updateBlock(first[":block/uid"], `((${uid}))`);
+  }
+}
+
+// today.ts ensureTodayQuote(): [[Daily Routine]] 템플릿의 포인터 블록을 오늘의 문구로 바꾼다.
+// Raycast는 LocalStorage에 전날 선택을 저장했지만, 여기서는 바꾸기 전 포인터 값을 그 대신 쓴다.
+async function updateTemplate(quote, day) {
+  const pointerUid = parseBlockRef(await getBlockString(POINTER_UID));
+  if (pointerUid === quote.uid) return;
+  await updateBlock(POINTER_UID, `((${quote.uid}))`);
+  if (pointerUid) await fixTodayNote(day, pointerUid, quote.uid);
+}
 
 function getQuoteByUid(db, uid) {
   if (!/^[\w-]+$/.test(uid)) throw new Error(`올바른 block uid가 아닙니다: ${uid}`);
@@ -114,7 +160,7 @@ function updateReadme(block) {
 
 const uid = process.argv[2]?.trim();
 const triggeredBy = process.env.TRIGGERED_BY?.trim() || undefined;
-if (!uid && !process.env.ROAM_TOKEN) {
+if (!process.env.ROAM_TOKEN) {
   console.error("ROAM_TOKEN이 없습니다 (.env 또는 secret 확인)");
   process.exit(1);
 }
@@ -123,6 +169,7 @@ const db = new DatabaseSync(DB_PATH, { readOnly: true });
 const day = getToday();
 try {
   const quote = uid ? getQuoteByUid(db, uid) : await pickQuote(db, day);
+  await updateTemplate(quote, day);
   updateReadme(render(quote, day, { picked: !uid, triggeredBy }));
   console.log(`${day} ${quote.uid} → README.md`);
 } finally {
