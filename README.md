@@ -1,5 +1,5 @@
 <!-- quote:start -->
-> 훌륭한 팀은 연습하면 최고 역량을 발휘한다. 연습은 습관을 낳고, 습관은 어떤 과정이나 기술을 마스터하게 해준다. - p370
+> If you just love movies enough, you can make a good one.
 
-<sub>🤖 매일 자동으로 선택된 오늘의 문구 · 2026-11-15 · [Roam](https://roamresearch.com/#/app/chitacan/page/HURLj2uSs)</sub>
+<sub>🤖 매일 자동으로 선택된 오늘의 문구 · 2026-11-16 · [Roam](https://roamresearch.com/#/app/chitacan/page/LooDs7xpm)</sub>
 <!-- quote:end -->
