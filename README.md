@@ -1,5 +1,5 @@
 <!-- quote:start -->
-> 당신에게 혁신이 어려운 이유는 아이디어가 부족해서가 아니라 행동의 변화가 부족하기 때문이다. 예전과 똑같은 전략으로는 똑같은 결과밖에 얻어내지 못한다.
+> 열심히 일하는데도 불구하고 비즈니스가 원하는 만큼 성장하지 않는다는 것을 알게 된다. 진정한 문제는 생산적인 작업은 생산적으로 보이지 않는다는 것이다.
 
-<sub>🤖 매일 자동으로 선택된 오늘의 문구 · 2026-11-21 · [Roam](https://roamresearch.com/#/app/chitacan/page/V99s7ZODX)</sub>
+<sub>🤖 매일 자동으로 선택된 오늘의 문구 · 2026-11-22 · [Roam](https://roamresearch.com/#/app/chitacan/page/xqtbkV0ne)</sub>
 <!-- quote:end -->
